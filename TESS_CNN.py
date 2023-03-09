@@ -7,18 +7,17 @@ import torch.nn.functional as F
 import os 
 import torch
 import torch.nn as nn
-from sklearn import model_selection
 
 
 np.random.seed(410)
 
-training_index = "9"
+training_index = "15"
 
 def prep_data(x,y,split):
   all_x = torch.load(x)
   all_y = torch.load(y)
 
-  all_x = torch.reshape(all_x, (all_x.shape[0],all_x.shape[2],all_x.shape[1]))
+  #all_x = torch.reshape(all_x, (all_x.shape[0],all_x.shape[2],all_x.shape[1]))
 
   data_x = all_x[:split,:,:]
   data_x_val = all_x[split:,:,:]
@@ -48,10 +47,10 @@ def prep_data(x,y,split):
   data_x_val = data_x_val[mask_val]
   data_y_val = data_y_val[mask_val]
   
-  data_x = nn.functional.normalize(data_x,dim=-1)
-  data_x_val = nn.functional.normalize(data_x_val,dim=-1)
-  data_x = nn.functional.normalize(data_x,dim=-2)
-  data_x_val = nn.functional.normalize(data_x_val,dim=-2)
+  data_x[:,0,:] = nn.functional.normalize(data_x[:,0,:],dim=1)
+  data_x_val[:,0,:] = nn.functional.normalize(data_x_val[:,0,:],dim=1)
+  data_x[:,1,:] = nn.functional.normalize(data_x[:,1,:],dim=1)
+  data_x_val[:,1,:] = nn.functional.normalize(data_x_val[:,1,:],dim=1)
   
   return data_x, data_x_val, data_y, data_y_val
   
@@ -99,20 +98,16 @@ def prep_data(x,y,split):
 #data_x_val = nn.functional.normalize(data_x_val,dim=-2)
 
 
-data_x_18, data_x_val_18, data_y_18, data_y_val_18 = prep_data("data_x_s18_postFFT.pt","data_y_s18_postFFT.pt",820)
-data_x_17, data_x_val_17, data_y_17, data_y_val_17 = prep_data("data_x_s17_postFFT.pt","data_y_s17_postFFT.pt",820)
+#data_x_18, data_x_val_18, data_y_18, data_y_val_18 = prep_data("data_x_s18_clean.pt","data_y_s18_clean.pt",820)
+#ddata_x_17, data_x_val_17, data_y_17, data_y_val_17 = prep_data("data_x_s17_clean.pt","data_y_s17_clean.pt",820)
 
-print(data_x_val_18.shape,data_x_val_17.shape)
 
-data_x_17 = data_x_17[:,:,(len(data_x_17[1,0,:])-1498)//2:-(len(data_x_17[1,0,:])-1498)//2]
-data_x_val_17 = data_x_val_17[:,:,(len(data_x_val_17[1,0,:])-1498)//2:-(len(data_x_val_17[1,0,:])-1498)//2]
+data_x, data_x_val, data_y, data_y_val = prep_data("data_x_6-17-18-19-45.pt","data_y_6-17-18-19-45.pt",4000)
+#data_x, data_x_val, data_y, data_y_val = prep_data("fourier_data_x_6-17-18-19-45.pt","fourier_data_y_6-17-18-19-45.pt",4000)
 
-print(data_x_val_18.shape,data_x_val_17.shape)
 
-data_x = torch.cat((data_x_18,data_x_17),0)
-data_y = torch.cat((data_y_18,data_y_17),0)
-data_x_val = torch.cat((data_x_val_18,data_x_val_17),0)
-data_y_val = torch.cat((data_y_val_18,data_y_val_17),0)
+#data_x = torch.cat((data_x,data_x_val),0)
+#data_y = torch.cat((data_y,data_y_val),0)
 
 mask = np.array(range(len(data_x)))
 mask_val = np.array(range(len(data_x_val)))
@@ -126,6 +121,34 @@ data_y = data_y[mask]
 data_x_val = data_x_val[mask_val]
 data_y_val = data_y_val[mask_val]
 
+data_x = torch.view_as_real(data_x)
+data_x_val = torch.view_as_real(data_x_val)
+
+print(data_x.shape,data_x_val.shape)
+
+#data_x = torch.flatten(data_x,start_dim = 2, end_dim = 3)
+#data_x_val = torch.flatten(data_x_val,start_dim = 2, end_dim = 3)
+
+
+#data_x = data_x[:3000,:,:].cuda()
+
+#data_y = data_y[:3000,:].cuda()
+
+#data_x_val = data_x_val[:1000,:,:].cuda()
+
+#data_y_val = data_y_val[:1000,:].cuda()
+
+
+print(data_x.shape,data_x_val.shape)
+
+
+#for i in np.array([14,67]):
+  #plt.figure()
+  #plt.plot(data_x.cpu()[i,0,:])
+  #plt.savefig(f"LC{i}")
+  #plt.figure()
+  #plt.plot(data_x.cpu()[i,1,:])
+  #plt.savefig(f"BKG{i}")
 
 
 # Build network
@@ -136,41 +159,48 @@ channels, n_out = 2,3
 class Classifier(nn.Module):
   def __init__(self, channels, n_out):
     super(Classifier,self).__init__()
-    self.conv1 = nn.Conv1d(channels, 128, kernel_size=5, padding="same")
-    self.conv2 = nn.Conv1d(128, 64, kernel_size=5, padding="same")
+    self.conv1 = nn.Conv1d(channels, 32, kernel_size=5, padding="same")
+    self.conv2 = nn.Conv1d(32, 64, kernel_size=5, padding="same")
     self.pool1 = nn.MaxPool1d(2)
-    self.conv3 = nn.Conv1d(64, 32, kernel_size=5, padding="same")
+    self.conv3 = nn.Conv1d(64, 128, kernel_size=5, padding="same")
+    self.conv4 = nn.Conv1d(128,256, kernel_size=5, padding="same")
     self.pool2 = nn.MaxPool1d(2)
-    #self.conv3 = nn.Conv1d(64,100, kernel_size=5, padding="same")
+
     #self.pool2 = nn.MaxPool1d(2)
     #self.conv3 = nn.Conv1d(in_channels=32, out_channels=16, kernel_size=3)
     #self.conv4 = nn.Conv1d(in_channels=16, out_channels=16, kernel_size=3)
     #self.pool2 = nn.MaxPool1d(kernel_size = 2, stride = 2)
-    self.linear1 = nn.Linear(32, 15)
-    self.linear2 = nn.Linear(15, n_out)
+    self.linear1 = nn.Linear(256, 90)
+    #self.linear2 = nn.Linear(128, 32)
+    self.linear3 = nn.Linear(90, n_out)
     self.dropout = nn.Dropout(0.3) 
 
   def forward(self, x):
     #print(x.shape)
     x = F.relu(self.conv1(x))
-    x = self.pool1(x)
+    
     #print(x.shape)
     x = F.relu(self.conv2(x))
-    x = self.pool2(x)
+    x = self.pool1(x)
     x = F.relu(self.conv3(x))
+    x = F.relu(self.conv4(x))
+    x = self.pool2(x)
     #x = self.pool2(x)
     #x = F.relu(self.conv3(x))
     x, _ = x.max(dim=-1) 
     #print(x.shape)
     x = F.relu(self.linear1(x))
     x = self.dropout(x)
+    #x = F.relu(self.linear2(x))
+    #x = self.dropout(x)
     #print(x.shape)
-    x = F.softmax(self.linear2(x),dim=1)
+    x = F.softmax(self.linear3(x),dim=1)
     return x
     
     
 
 net = Classifier(channels, n_out)
+net.cuda()
 
 # Give more weight to the planet candidates when calculating the loss
 
@@ -186,8 +216,8 @@ weights = torch.tensor(weights)
 
 loss_function = nn.CrossEntropyLoss()#weight = weights)
 #loss_function = nn.CrossEntropyLoss()
-optimizer = torch.optim.Adam(net.parameters(),lr=0.001)#, weight_decay = 0.9)
-#scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=500, gamma=0.1)
+optimizer = torch.optim.Adam(net.parameters(),lr=0.0005)#, weight_decay = 0.9)
+#scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=200, gamma=0.1)
 
 
 train_losses = []
@@ -198,7 +228,7 @@ train_acc = []
 val_acc = []
 
 
-epochs = 300
+epochs = 500
 
 
 # Train the network
@@ -206,49 +236,61 @@ epochs = 300
 for epoch in range(epochs):
 
     print(f"epoch: {epoch}")
-
+    #num = np.random.randint(data_x.cuda().shape[0]-1500)
+    #num2 = np.random.randint(data_x_val.cuda().shape[0]-250)
+    #data_x.cpu()
+    #data_x_val.cpu()
     net.eval()
-    with torch.no_grad():
-      pred_y_val = net(data_x_val)
-      val_loss = loss_function(pred_y_val, data_y_val)
-      val_losses.append(val_loss.item())  
     
-    net.train()
-    pred_y = net(data_x)
-    loss = loss_function(pred_y, data_y)
+    for i in range (10):
+        with torch.no_grad():
+             start = i*data_x_val.cuda().shape[0]//10
+             end = (i+1)*data_x_val.cuda().shape[0]//10
+             data_x_val.cpu()
+             pred_y_val = net(data_x_val[start:end].cuda())
+             val_loss = loss_function(pred_y_val, data_y_val[start:end].cuda())
+             val_corr = torch.argmax(pred_y_val,dim=1)==torch.argmax(data_y_val[start:end].cuda(),dim=1)
+        net.train()
+        start = i*data_x.cuda().shape[0]//10
+        end = (i+1)*data_x.cuda().shape[0]//10
+        data_x.cpu()
+        pred_y = net(data_x[start:end].cuda())
+        loss = loss_function(pred_y, data_y[start:end].cuda())
+        train_corr = torch.argmax(pred_y,dim=1)==torch.argmax(data_y[start:end].cuda(),dim=1)
+
+    val_losses.append(val_loss.item())
     train_losses.append(loss.item())
     
-    
-    train_corr = torch.argmax(pred_y,dim=1)==torch.argmax(data_y,dim=1)
-    val_corr = torch.argmax(pred_y_val,dim=1)==torch.argmax(data_y_val,dim=1)
     
     #train_corr = len(torch.where(train_corr == True)[0])
     #val_corr = len(torch.where(val_corr == True)[0])
     train_corr = torch.sum(train_corr)
     val_corr = torch.sum(val_corr)
         
-    train_acc.append(train_corr/len(pred_y))
-    val_acc.append(val_corr/len(pred_y_val))
+    train_acc.append((train_corr/len(pred_y)).cpu())
+    val_acc.append((val_corr/len(pred_y_val)).cpu())
 
     net.zero_grad()
     loss.backward()
 
     optimizer.step()
+
     #scheduler.step()
     
 
 # Create a directory and save the training results. If the directory already exists, add them there
 
 try:
-    os.mkdir(f"models/training{training_index}")
-    checkpoint_path = f"models/training{training_index}/cp_{training_index}.ckpt"
+    os.mkdir(f"training{training_index}")
+    checkpoint_path = f"training{training_index}/cp_{training_index}.ckpt"
     checkpoint_dir = os.path.dirname(checkpoint_path)
 except:
-    checkpoint_path = f"models/training{training_index}/cp_{training_index}.ckpt"
+    checkpoint_path = f"training{training_index}/cp_{training_index}.ckpt"
     checkpoint_dir = os.path.dirname(checkpoint_path)
 
 torch.save(net.state_dict(), checkpoint_path)
 
+print(type(train_losses[1]),type(train_acc[1]))
     
 # Plot loss and accuracy
 
@@ -259,7 +301,7 @@ plt.plot(val_losses,label = "val")
 plt.legend()
 plt.ylabel('loss')
 plt.xlabel('epoch')
-plt.savefig("loss.png")
+plt.savefig(f"loss{training_index}.png")
 
 plt.figure()
 plt.plot(train_acc,label="train")
@@ -267,27 +309,28 @@ plt.plot(val_acc,label = "val")
 plt.legend()
 plt.ylabel('accuracy')
 plt.xlabel('epoch')
-plt.savefig("acc.png")
+plt.savefig(f"acc{training_index}.png")
 
-
-pred_y = net(data_x)
-
-planets = 0 
+planets = 0
 eb = 0
 other = 0
 
-for i in pred_y:
-  if i[0] > 0.34:
-    planets = planets+1
-  if i[1] > 0.34:
-    eb = eb+1
-  if i[2] > 0.34:
-    other = other+1
+data_x.cpu()
+
+for i in range(5):
+    #print(i*1000, (i+1)*1000)
+    try:
+        pred_y = net(data_x[i*1000:(i+1)*1000].cuda())
+    except:
+        pred_y = net(data_x[i*1000:].cuda())
+
+    for i in pred_y:
+        if torch.argmax(i) == 0:
+            planets = planets+1
+        if torch.argmax(i) == 1:
+            eb = eb+1
+        if torch.argmax(i) == 2:
+            other = other+1
     
     
 print(planets,eb,other)
-
-
-
-
-
