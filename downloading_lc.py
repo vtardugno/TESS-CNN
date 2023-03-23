@@ -5,10 +5,10 @@ import os
 import glob
 import matplotlib.pyplot as plt
 
-sector = 6
+sector = 2
 
 # list of TIC IDs + ground truth
-ground_truth = pd.read_csv(f"ground_truth_{sector}.csv")
+ground_truth = pd.read_csv(f"ground_truth/ground_truth_{sector}.csv")
 
 tic_ids = ground_truth["TIC_ID"]
 
