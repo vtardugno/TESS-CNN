@@ -14,11 +14,11 @@ start_time = time.time()
 torch.autograd.set_detect_anomaly(True)
 np.random.seed(410)
 
-training_index = "720chunks_8"
+training_index = "1440chunks_7"
 
-def prep_data(x,y,split):
-  all_x = torch.load(x)
-  all_y = torch.load(y)
+def prep_data(all_x,all_y,split):
+  #all_x = torch.load(x)
+  #all_y = torch.load(y)
 
   #all_x = torch.reshape(all_x, (all_x.shape[0],all_x.shape[2],all_x.shape[1]))
 
@@ -68,10 +68,10 @@ def prep_data(x,y,split):
 #  data_x_val = torch.cat((data_x_val,planets_x_val,planets_x_val,planets_x_val),0)
 #  data_y_val = torch.cat((data_y_val,planets_y_val,planets_y_val,planets_y_val),0)
 
-  data_x = torch.cat((planets_x,planets_x,planets_x,planets_x,planets_x,planets_x,eb_x,other_x,other_x,other_x,other_x,other_x,other_x,nothing_x),0)
-  data_y = torch.cat((planets_y,planets_y,planets_y,planets_y,planets_y,planets_y,eb_y,other_y,other_y,other_y,other_y,other_y,other_y,nothing_y),0)
-  data_x_val = torch.cat((planets_x_val,planets_x_val,planets_x_val,planets_x_val,planets_x_val,planets_x_val,eb_x_val,other_x_val,other_x_val,other_x_val,other_x_val,other_x_val,other_x_val,nothing_x_val),0)
-  data_y_val = torch.cat((planets_y_val,planets_y_val,planets_y_val,planets_y_val,planets_y_val,planets_y_val,eb_y_val,other_y_val,other_y_val,other_y_val,other_y_val,other_y_val,other_y_val,nothing_y_val),0)
+  data_x = torch.cat((planets_x,planets_x,planets_x,planets_x,planets_x,planets_x,eb_x,other_x,other_x,other_x,other_x,other_x,other_x,other_x,nothing_x),0)
+  data_y = torch.cat((planets_y,planets_y,planets_y,planets_y,planets_y,planets_y,eb_y,other_y,other_y,other_y,other_y,other_y,other_y,other_y,nothing_y),0)
+  data_x_val = torch.cat((planets_x_val,planets_x_val,planets_x_val,planets_x_val,planets_x_val,planets_x_val,eb_x_val,other_x_val,other_x_val,other_x_val,other_x_val,other_x_val,other_x_val,other_x_val,nothing_x_val),0)
+  data_y_val = torch.cat((planets_y_val,planets_y_val,planets_y_val,planets_y_val,planets_y_val,planets_y_val,eb_y_val,other_y_val,other_y_val,other_y_val,other_y_val,other_y_val,other_y_val,other_y_val,nothing_y_val),0)
 
 
   mask = np.array(range(len(data_x)))
@@ -91,9 +91,32 @@ def prep_data(x,y,split):
   
   return data_x, data_x_val, data_y, data_y_val
   
+data1x = torch.load("data_x_chunks_1440.pt")
+data2x = torch.load("data_x_chunks_1440_2.pt")
+data3x = torch.load("data_x_chunks_1440_3.pt")
+#data4x = torch.load("data_x_chunks_1440_4.pt")
+#data5x = torch.load("data_x_chunks_1440_5.pt")
+#data6x = torch.load("data_x_chunks_1440_6.pt")
+
+data1y = torch.load("data_y_chunks_1440.pt")
+data2y = torch.load("data_y_chunks_1440_2.pt")
+data3y = torch.load("data_y_chunks_1440_3.pt")
+#data4y = torch.load("data_y_chunks_1440_4.pt")
+#data5y = torch.load("data_y_chunks_1440_5.pt")
+#data6y = torch.load("data_y_chunks_1440_6.pt")
 
 
-data_x, data_x_val, data_y, data_y_val = prep_data("data_x_chunks_720.pt","data_y_chunks_720.pt",180000)
+datax = torch.cat((data1x,data2x,data3x),0)
+datay = torch.cat((data1y,data2y,data3y),0)
+
+mask = np.array(range(len(datax)))
+np.random.shuffle(mask)
+datax = datax[mask]
+datay = datay[mask]
+
+#data_x, data_x_val, data_y, data_y_val = prep_data("data_x_chunks_720.pt","data_y_chunks_720.pt",180000)
+
+data_x, data_x_val, data_y, data_y_val = prep_data(datax, datay ,225000)
 
 
 mask = np.array(range(len(data_x)))
@@ -112,10 +135,10 @@ data_y_val = data_y_val[mask_val]
 print(data_x.shape,data_x_val.shape)
 
 training_set = torch.utils.data.TensorDataset(data_x,data_y)
-training_generator = torch.utils.data.DataLoader(training_set, batch_size = 512, shuffle=True)
+training_generator = torch.utils.data.DataLoader(training_set, batch_size = 1024, shuffle=True)
 
 validation_set = torch.utils.data.TensorDataset(data_x_val,data_y_val)
-validation_generator = torch.utils.data.DataLoader(validation_set,batch_size = 512, shuffle=True)
+validation_generator = torch.utils.data.DataLoader(validation_set,batch_size = 1024, shuffle=True)
 
 
 print(data_x.shape,data_x_val.shape)
@@ -133,7 +156,7 @@ print(data_x.shape,data_x_val.shape)
 # Build network
 
 
-channels, n_out = 2,4
+channels, n_out = 6,4
 
 class Classifier(nn.Module):
   def __init__(self, channels, n_out):
@@ -146,6 +169,10 @@ class Classifier(nn.Module):
     self.pool3 = nn.MaxPool1d(2)
     self.conv4 = nn.Conv1d(128,256, kernel_size=5, padding="same")
     self.pool4 = nn.MaxPool1d(2)
+   # self.conv5 = nn.Conv1d(128,256, kernel_size=5, padding="same")
+   # self.pool5 = nn.MaxPool1d(2)
+   # self.conv6 = nn.Conv1d(256,256, kernel_size=5, padding="same")
+   # self.pool6 = nn.MaxPool1d(2)
    # self.conv5 = nn.Conv1d(256,512, kernel_size=5, padding="same")
    # self.pool3 = nn.MaxPool1d(2)
 
@@ -158,8 +185,9 @@ class Classifier(nn.Module):
     self.linear1 = nn.Linear(256, 128)
     self.linear2 = nn.Linear(128, 64)
     self.linear3 = nn.Linear(64, 32)
-    self.linear4 = nn.Linear(32, n_out)
-    self.dropout = nn.Dropout(0.3) 
+    self.linear4 = nn.Linear(32, 16)
+    self.linear5 = nn.Linear(16, n_out)
+    self.dropout = nn.Dropout(0.5) 
 
   def forward(self, x):
     #print(x.shape)
@@ -172,8 +200,10 @@ class Classifier(nn.Module):
     x = self.pool3(x)
     x = F.relu(self.conv4(x))
     x = self.pool4(x)
-    #x = F.relu(self.conv5(x))
-    #x = self.pool3(x)
+   # x = F.relu(self.conv5(x))
+   # x = self.pool5(x)
+   # x = F.relu(self.conv6(x))
+   # x = self.pool6(x)
 
     x, _ = x.max(dim=-1) 
     #print(x.shape)
@@ -184,7 +214,8 @@ class Classifier(nn.Module):
     x = F.relu(self.linear3(x))
     x = self.dropout(x)
     #print(x.shape)
-    x = F.softmax(self.linear4(x),dim=1)
+    x = F.relu(self.linear4(x))
+    x = F.softmax(self.linear5(x),dim=1)
     return x
     
     
@@ -218,7 +249,7 @@ train_acc = []
 val_acc = []
 
 
-epochs = 500
+epochs = 200
 
 
 # Train the network
@@ -299,11 +330,12 @@ plt.xlabel('epoch')
 plt.savefig(f"loss{training_index}.png")
 
 plt.figure()
-plt.plot(train_acc,label="train")
-plt.plot(val_acc,label = "val")
+plt.plot(train_acc,label=f"train (final = {train_acc[-1]})")
+plt.plot(val_acc,label = f"val (final = {val_acc[-1]})")
 plt.legend()
 plt.ylabel('accuracy')
 plt.xlabel('epoch')
+plt.legend()
 plt.savefig(f"acc{training_index}.png")
 
 planets = 0
