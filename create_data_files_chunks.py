@@ -1,10 +1,11 @@
 import lightkurve as lk
+import os, sys
 import numpy as np
 import pandas as pd
 import os
 import glob
 import matplotlib.pyplot as plt
-import torch 
+import torch  
 
 labels = []
 
@@ -15,6 +16,8 @@ mom1s = []
 mom2s = []
 pos1s = []
 pos2s = []
+tics = []
+fluxes2 = []
 
 weird_ones = []
 
@@ -22,22 +25,11 @@ weird_ones = []
 
 #sectors = [2,3,4,5,6,17,18,19,45,48]
 #sectors = [2,3,4,5,6,17,18,19,45]
-#sectors = [2,3,5,6,17,19,45]# chunk size without index
+sectors = [2,3,5,6,17,19,45]# chunk size without index
 #sectors = [4,18,10,11,34] #chunk_size_2
-sectors = [35,36,37,38,42] #chunk_size_3 (all of these for when not including moms)
-
-#sectors = [2,3,5]# chunk size without index
-#sectors = [4,18,10] #chunk_size_2
-#sectors = [35,36,37] #chunk_size_3
-#sectors = [19,45,34] #chunk_size_4
-#sectors = [17,11,38] #chunk_size_5
-#sectors = [6,42] #chunk_size_6
-
-#cut = 12000
-#cut = 2994
+#sectors = [35,36,37,38,42] #chunk_size_3 
 
 chunk_size = 1440
-#chunk_size = 2880
 stride = 800
 
 for sec in sectors:
@@ -50,6 +42,10 @@ for sec in sectors:
         chunk_num = int(np.ceil((len(lc[1]) - chunk_size) / stride))
 
         if len(lc[1])>=10000:
+            try:
+                tic = int(curve[16:-7])
+            except:
+                tic = int(curve[17:-7])
 
             for i in range(chunk_num):
                 #start = int(i*(len(lc[1])-1)/chunk_size)
@@ -75,7 +71,11 @@ for sec in sectors:
                 pos2 = np.array(lc[5][start:start+chunk_size])
                 pos2 = pos2/np.median(pos2)
                 pos2 = list(pos2)
-            
+               # label = [lc[7][0],lc[7][1],lc[7][2]]
+                flux2 = np.array(lc[1][start:start+chunk_size])
+                flux2 = flux/np.std(flux2) 
+                flux2 = list(flux2)
+
                 label = [lc[7][0],lc[7][1],lc[7][2], 0 ]
             
                 try: 
@@ -119,7 +119,8 @@ for sec in sectors:
                 mom2s.append(mom2)
                 pos1s.append(pos1)
                 pos2s.append(pos2)
-                        
+                tics.append(tic)
+                fluxes2.append(flux2)
 
 
 
@@ -129,11 +130,11 @@ for sec in sectors:
 
 #print(data[534])
 
-def make_tensor(fluxes,bkgs, labels, mom1s,mom2s,pos1,pos2):
+def make_tensor(fluxes,bkgs, labels, mom1s,mom2s,pos1,pos2,tics):
   #train_images, val_images, train_labels, val_labels = model_selection.train_test_split(all_images,all_labels, random_state=410)
-    data_x = torch.zeros((len(fluxes),6,len(fluxes[0])))
+    data_x = torch.zeros((len(fluxes),8,len(fluxes[0])))
+    #data_y = torch.zeros((len(labels),4))
     data_y = torch.zeros((len(labels),4))
-
 
   #print(data_x.shape,data_y.shape)
 
@@ -148,13 +149,15 @@ def make_tensor(fluxes,bkgs, labels, mom1s,mom2s,pos1,pos2):
         data_x[i,3,:] = torch.tensor(mom2s[i])
         data_x[i,4,:] = torch.tensor(pos1s[i])
         data_x[i,5,:] = torch.tensor(pos2s[i])
+        data_x[i,6,:] = torch.tensor(tics[i])
+        data_x[i,7,:] = torch.tensor(fluxes2[i])
     
     
     return data_x, data_y
    
    
    
-data_x, data_y = make_tensor(fluxes,bkgs,labels,mom1s,mom2s,pos1s,pos2s) 
+data_x, data_y = make_tensor(fluxes,bkgs,labels,mom1s,mom2s,pos1s,pos2s,tics) 
 
 plt.figure()
 plt.plot(data_x[15,0,:])
@@ -182,13 +185,10 @@ plt.ylabel("Flux")
 # Save pre-processed data
 
 data_x.to(torch.float32)
+  
 
-
-#torch.save(data_x_clean,f"data_x_s{sector}_clean.pt")  
-#torch.save(data_y,f"data_y_s{sector}_clean.pt")  
-
-torch.save(data_x,f"data_x_chunks_{chunk_size}_3.pt")  
-torch.save(data_y,f"data_y_chunks_{chunk_size}_3.pt")     
+torch.save(data_x,f"data_x_chunks_{chunk_size}_flux2.pt")  #uncomment this to save tensors
+torch.save(data_y,f"data_y_chunks_{chunk_size}_flux2.pt")     
 
 #print(data_x[:,:,1] == torch.tensor(bkgs))
 #print(data_x[1,:,0],fluxes[1])
@@ -197,7 +197,39 @@ torch.save(data_y,f"data_y_chunks_{chunk_size}_3.pt")
 print(data_y.shape)
 print(data_y[:5])
 print(data_x.shape)
-  
+
+tshirt_pc = np.where((data_y[:,0]==1))[0][:81]
  
- 
- 
+def make_plot(cols, rows, size, array,title,figname,seed=410):
+    np.random.seed(seed)
+    fig, axs = plt.subplots(cols,rows, figsize=size)
+    fig.tight_layout(pad=-1.5)
+    fig.suptitle(title, fontsize=20,y=0.99)
+    plt.subplots_adjust(top=0.96,right=0.99)
+
+    for row in range(rows):
+        
+        for col in range(cols):
+            
+            index = np.random.choice(array,replace=False)
+            
+            axs[row][col].plot(data_x[index,0,:],".",markersize=0.6,color="indigo")
+            axs[row][col].tick_params(left=False,bottom=False,labelleft=False,labelbottom=False)
+            array = np.delete(array,np.where(array == index))
+            if col == 6 and row == 7:
+                print(index)
+            if col == 8 and row == 7:
+                print(index)
+            if col == 1 and row == 8:
+                print(index)
+            
+            #axs[row][col].axis("off")
+     
+    plt.savefig(figname)    
+    print(len(array))
+
+
+make_plot(9, 9, (15,15), tshirt_pc ,"t-shirt plot after tensor creation","tshirt_plot_create_tensor.png")
+
+
+

@@ -8,7 +8,9 @@ import os
 import torch
 import torch.nn as nn
 import time
-import wandb
+import pandas as pd
+from sklearn import manifold, datasets
+from sklearn.metrics import precision_recall_fscore_support, roc_curve, confusion_matrix
 
 
 start_time = time.time()
@@ -16,10 +18,9 @@ start_time = time.time()
 torch.autograd.set_detect_anomaly(True)
 np.random.seed(410)
 
-training_index = "1440chunks_21_everything_except_pos"
+training_index = "1440chunks_21_everything"
 
-
-wandb.init(project="TESS_CNN_dataloader",name=training_index)
+# PREP AND LOAD DATA
 
 def prep_data(all_x,all_y,split):
   #all_x = torch.load(x)
@@ -56,23 +57,6 @@ def prep_data(all_x,all_y,split):
   other_y_val = data_y_val[np.where((data_y_val[:,2]==1))]
   #other_y_val = other_y_val[::2,:]
 
-  #nothing_x = data_x[np.where((data_y[:,3]==1))]
-  #nothing_x = nothing_x[::3,:,:]
-  #nothing_y = data_y[np.where((data_y[:,3]==1))]
-  #nothing_y = nothing_y[::3,:]
-
-  #nothing_x_val = data_x_val[np.where((data_y_val[:,3]==1))]
-  #nothing_x_val = nothing_x_val[::3,:,:]
-  #nothing_y_val = data_y_val[np.where((data_y_val[:,3]==1))]
-  #nothing_y_val = nothing_y_val[::3,:]
-
- 
-
-#  data_x = torch.cat((data_x,planets_x,planets_x,planets_x),0)
-#  data_y = torch.cat((data_y,planets_y,planets_y,planets_y),0)
-#  data_x_val = torch.cat((data_x_val,planets_x_val,planets_x_val,planets_x_val),0)
-#  data_y_val = torch.cat((data_y_val,planets_y_val,planets_y_val,planets_y_val),0)
-
   data_x = torch.cat((planets_x,planets_x,planets_x,planets_x,planets_x,planets_x,planets_x,planets_x,eb_x,other_x,other_x,other_x,other_x),0)#nothing_x),0)
   data_y = torch.cat((planets_y,planets_y,planets_y,planets_y,planets_y,planets_y,planets_y,planets_y,eb_y,other_y,other_y,other_y,other_y),0)#,nothing_y),0)
   data_x_val = torch.cat((planets_x_val,planets_x_val,planets_x_val,planets_x_val,planets_x_val,planets_x_val,planets_x_val,planets_x_val,eb_x_val,other_x_val,other_x_val,other_x_val,other_x_val),0)#,nothing_x_val),0)
@@ -82,23 +66,15 @@ def prep_data(all_x,all_y,split):
   mask = np.array(range(len(data_x)))
   mask_val = np.array(range(len(data_x_val)))
 
-  #np.random.shuffle(mask)
-  #np.random.shuffle(mask_val)
-
-
-  #data_x = data_x[mask]
-  #data_y = data_y[mask]
-  #data_x_val = data_x_val[mask_val]
-  #data_y_val = data_y_val[mask_val]
   
  
   print("planets", planets_y.shape, planets_y_val.shape, "eb", eb_y.shape, eb_y_val.shape, "fp", other_y.shape, other_y_val.shape)#, "nothing", nothing_y.shape, nothing_y_val.shape)
   
   return data_x, data_x_val, data_y[:,:-1], data_y_val[:,:-1]
   
-data1x = torch.load("data_x_chunks_1440_flux2.pt")[:,[0,1,2,3,7],:]
-data2x = torch.load("data_x_chunks_1440_flux2_2.pt")[:,[0,1,2,3,7],:]
-data3x = torch.load("data_x_chunks_1440_flux2_3.pt")[:,[0,1,2,3,7],:]
+data1x = torch.load("data_x_chunks_1440_flux2.pt")#[:,[0,1,2,3,4,5,7],:]
+data2x = torch.load("data_x_chunks_1440_flux2_2.pt")#[:,[0,1,2,3,4,5,7],:]
+data3x = torch.load("data_x_chunks_1440_flux2_3.pt")#[:,[0,1,2,3,4,5,7],:]
 #data4x = torch.load("data_x_chunks_1440_4.pt")
 #data5x = torch.load("data_x_chunks_1440_5.pt")
 #data6x = torch.load("data_x_chunks_1440_6.pt")
@@ -155,20 +131,9 @@ validation_generator = torch.utils.data.DataLoader(validation_set,batch_size = 1
 #torch.reshape(data_x_val,(data_x_val.shape[0],1,data_x_val.shape[1]))
 print(data_x.shape,data_x_val.shape)
 
+# LOAD MODEL
 
-#for i in np.array([14,67]):
-  #plt.figure()
-  #plt.plot(data_x.cpu()[i,0,:])
-  #plt.savefig(f"LC{i}")
-  #plt.figure()
-  #plt.plot(data_x.cpu()[i,1,:])
-  #plt.savefig(f"BKG{i}")
-
-
-# Build network
-
-
-channels, n_out = 5,3
+channels, n_out = 7,3
 
 class Classifier(nn.Module):
   def __init__(self, channels, n_out):
@@ -243,194 +208,146 @@ class Classifier(nn.Module):
     
 
 net = Classifier(channels, n_out)
-net.cuda()
+#net.cuda()
 
-# Give more weight to the planet candidates when calculating the loss
+net.load_state_dict(torch.load(f'training{training_index}/cp_{training_index}.ckpt',map_location=torch.device('cpu')))
 
-#neg = torch.sum(data_y[:,2]!=1)
-#pos = torch.sum(data_y[:,2]==1)
-#total = neg+pos
-
-#w_0 = (1/neg)*(total/2)
-#w_1 = (1/pos)*(total/2)
-
-#weights = [w_1,w_0,w_0,w_0]
-#weights = torch.tensor(weights).cuda()
-
-loss_function = nn.CrossEntropyLoss()#weight = weights)
-#loss_function = nn.BCELoss()
-optimizer = torch.optim.Adam(net.parameters(),lr=0.001)#, weight_decay = 0.9)
-scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=60, gamma=0.8)
-#scheduler = torch.optim.lr_scheduler.CyclicLR(optimizer, base_lr=0.0005, max_lr=0.005,cycle_momentum=False,step_size_up=50)
-
-train_losses = []
-val_losses = []
-
-
-train_acc = []
-val_acc = []
-
-
-epochs = 200
-
-
-# Train the network
-
-for epoch in range(epochs):
-
-    print(f"epoch: {epoch}")
-    
-    net.eval()
-    
-    loss_loop = []
-    val_loss_loop = []
-    acc_loop = []
-    val_acc_loop  = []
-
-    for local_batch, local_labels in training_generator:
-        # Transfer to GPU
-        local_batch, local_labels = local_batch.cuda(), local_labels.cuda()
-        net.train()
-        pred_y = net(local_batch)
-        loss = loss_function(pred_y, local_labels)
-        loss_loop.append(loss.item())
-        train_corr_pre = torch.argmax(pred_y,dim=1)==torch.argmax(local_labels,dim=1)
-        #train_corr_pre = torch.round(pred_y) == local_labels
-        train_corr = torch.sum(train_corr_pre)
-        acc_loop.append((train_corr/len(pred_y)).cpu())
-        net.zero_grad()
-        loss.backward()
-        optimizer.step()
-         
-    for local_batch, local_labels in validation_generator:
-        # Transfer to GPU
-        local_batch, local_labels = local_batch.cuda(), local_labels.cuda()
-        net.eval()
-        with torch.no_grad():
-             pred_y_val = net(local_batch)
-             val_loss = loss_function(pred_y_val, local_labels)
-             val_loss_loop.append(val_loss.item())
-             val_corr_pre = torch.argmax(pred_y_val,dim=1)==torch.argmax(local_labels,dim=1)
-             #val_corr_pre = torch.round(pred_y_val) == local_labels
-             val_corr = torch.sum(val_corr_pre)
-             val_acc_loop.append((val_corr/len(pred_y_val)).cpu())
-
-
-    val_losses.append(np.average(np.array(val_loss_loop)))
-    train_losses.append(np.average(np.array(loss_loop)))
-        
-    train_acc.append(np.average(np.array(acc_loop)))
-    val_acc.append(np.average(np.array(val_acc_loop)))
-
-    wandb.log({"train": {"acc": np.average(np.array(acc_loop)),"loss":np.average(np.array(loss_loop))}, "val": {"acc": np.average(np.array(val_acc_loop)),"loss": np.average(np.array(val_loss_loop))}})
-
-    #net.zero_grad()
-    #loss.backward()
-
-
-    scheduler.step()
-    
-
-# Create a directory and save the training results. If the directory already exists, add them there
-
-try:
-    os.mkdir(f"training{training_index}")
-    checkpoint_path = f"training{training_index}/cp_{training_index}.ckpt"
-    checkpoint_dir = os.path.dirname(checkpoint_path)
-except:
-    checkpoint_path = f"training{training_index}/cp_{training_index}.ckpt"
-    checkpoint_dir = os.path.dirname(checkpoint_path)
-
-torch.save(net.state_dict(), checkpoint_path)
-
-#print(train_losses)
-    
-# Plot loss and accuracy
-
-import matplotlib.pyplot as plt
-plt.figure()
-plt.plot(train_losses,label="train")
-plt.plot(val_losses,label = "val")
-plt.legend()
-plt.ylabel('loss')
-plt.xlabel('epoch')
-plt.savefig(f"loss{training_index}.png")
-
-plt.figure()
-plt.plot(train_acc,label=f"train (final = {train_acc[-1]})")
-plt.plot(val_acc,label = f"val (final = {val_acc[-1]})")
-plt.legend()
-plt.ylabel('accuracy')
-plt.xlabel('epoch')
-plt.legend()
-plt.savefig(f"acc{training_index}.png")
+# PERFORMANCE EVALUATION
 
 planets = 0
 eb = 0
 other = 0
 #nothing = 0 
 
+y_true = np.array([])
+y_pred = np.array([])
+x_batch = np.array([])
 
-for local_batch, local_labels in training_generator:
+net.eval()
+for local_batch, local_labels in validation_generator:
   # Transfer to GPU
-  local_batch, local_labels = local_batch.cuda(), local_labels.cuda()
-  pred_y = net(local_batch)
-  #pred_y = net(data_x[i*1000:(i+1)*1000].cuda())
+  #local_batch, local_labels = local_batch.cuda(), local_labels.cuda()
+  pred_y = net(local_batch[:,[0,1,2,3,4,5,7],:])
+  pred_y = pred_y.cpu().detach().numpy()
+  true_y = local_labels.numpy()
+  if y_true.shape[0] == 0:
+    y_true = true_y
+    y_pred = pred_y
+    x_batch = local_batch[:,[0,1,6],:]
+  else:
+    y_true = np.append(y_true, true_y, axis=0)
+    y_pred = np.append(y_pred, pred_y, axis=0)
+    x_batch = np.append(x_batch, local_batch[:,[0,1,6],:], axis=0)
   for i in pred_y:
-      if torch.argmax(i) == 0:
+      if np.argmax(i) == 0:
         planets = planets+1
-      if torch.argmax(i) == 1:
+      if np.argmax(i) == 1:
         eb = eb+1
-      if torch.argmax(i) == 2:
+      if np.argmax(i) == 2:
         other = other+1
-      #if torch.argmax(i) == 3:
-       # nothing = nothing+1
-      #if torch.round(i) == 0:
-       # eb = eb+1
-      #else:
-       # planets = planets +1
-    
-    
+
+
+
 print(planets,eb,other)#,nothing)
 
+
+print(confusion_matrix(np.argmax(y_true,axis=1), np.argmax(y_pred,axis=1)))
+
+print(precision_recall_fscore_support(np.argmax(y_true,axis=1), np.argmax(y_pred,axis=1), average=None))
+
+a, b, c = roc_curve(y_true[:,0], y_pred[:,0])
+
+thr = 3500
+
+other = y_pred[y_pred[:,0]<c[thr]]
+pc = y_pred[y_pred[:,0]>=c[thr]]
+
+correct = 0
+cont = 0
+planet = 0
+missed = 0 
+others = 0
+
+for i in range(len(y_pred)):
+  if y_pred[i,0] < c[thr] and y_true[i,0] == 0:
+    correct = correct + 1
+    others = others + 1
+  elif y_pred[i,0] >= c[thr] and y_true[i,0] == 1:
+    correct = correct + 1
+    planet = planet + 1
+  elif y_pred[i,0] >= c[thr] and y_true[i,0] == 0:
+    cont = cont + 1
+  elif y_pred[i,0] < c[thr] and y_true[i,0] == 1:
+    missed = missed + 1
+
+
+accuracy = planet/len(y_true[y_true[:,0]==1])
+contamination = cont/(len(pc))
+print(f"percent of planets found: {accuracy}, contamination: {contamination}, planets found: {planet}, planets missed: {missed}, false positives: {cont}")
+
+print(f"% of FP and EB removed: {(others)*100/(len(y_true[y_true[:,0]==0]))}")
+print(f"num removed: {others}")
+
+fp_as_pc = []
+fp_as_eb = []
+fp_as_fp = []
+
+
+fp_as_pc_tics = []
+fp_as_eb_tics = []
+
+for i in range(len(y_true)):
+    if np.argmax(y_true,axis=1)[i] == 2 and np.argmax(y_pred,axis=1)[i] == 0:
+        fp_as_pc.append(i)
+        fp_as_pc_tics.append(x_batch[i,6,0])
+        
+    if np.argmax(y_true,axis=1)[i] == 2 and np.argmax(y_pred,axis=1)[i] == 1:
+        fp_as_eb.append(i)
+        fp_as_eb_tics.append(x_batch[i,6,0])
+
+    if np.argmax(y_true,axis=1)[i] == 2 and np.argmax(y_pred,axis=1)[i] == 2:
+        fp_as_fp.append(i)
+
+
+np.savetxt("fp_as_pc_tics.csv",np.array(fp_as_pc_tics),delimiter=",")
+np.savetxt("fp_as_eb_tics.csv",np.array(fp_as_eb_tics),delimiter=",")
+
+def make_plot(cols, rows, size, label,title):
+
+    fig, axs = plt.subplots(cols,rows, figsize=size)
+    fig.tight_layout(pad=-1.5)
+    fig.suptitle(title, fontsize=20,y=0.99)
+    plt.subplots_adjust(top=0.96,right=0.99)
+
+    fig2, axs2 = plt.subplots(cols,rows, figsize=size)
+    fig2.tight_layout(pad=-1.5)
+    fig2.suptitle(title + " - background", fontsize=20,y=0.99) 
+    plt.subplots_adjust(top=0.96,right=0.99)
+    
+    for row in range(rows):
+        
+        for col in range(cols):
+            
+            lc = np.random.choice(label,replace=False)
+            
+            axs[row][col].plot(x_batch[lc,0,:],".",markersize=1,color="indigo",label=f"{x_batch[lc,-1,0]}")
+            axs[row][col].tick_params(left=False,bottom=False,labelleft=False,labelbottom=False)
+            axs[row][col].legend()
+            print(y_true[lc,2])
+            axs2[row][col].plot(x_batch[lc,1,:],".",markersize=0.6,color="tab:orange")
+            axs2[row][col].tick_params(left=False,bottom=False,labelleft=False,labelbottom=False)
+            
+            label = np.delete(label,np.where(label==lc))
+            #axs[row][col].axis("off")
+            
+    fig.savefig(title+".png") 
+    fig2.savefig(title+"_bkg.png")    
+
+make_plot(8,8,(15,18),fp_as_eb,"FP as EB")   
+make_plot(8,8,(15,18),fp_as_pc,"FP as PC")
+make_plot(8,8,(15,18),fp_as_fp,"FP as FP")
 
 end_time = time.time()
 elapsed_time = end_time - start_time
 
 print("Elapsed time: ", elapsed_time)
-
-y_true = data_y_val[::8,:].numpy()
-net.eval()
-with torch.no_grad():
-    y_pred = net(data_x_val[::8,:,:].cuda())
-y_pred = y_pred.cpu().detach().numpy()
-
-
-from sklearn.metrics import roc_curve
-
-a, b, c = roc_curve(y_true[:,0], y_pred[:,0])
-
-plt.figure()
-plt.plot(a,b,label="PC vs the rest")
-plt.plot([0, 1], [0, 1], "k--", label="chance level (AUC = 0.5)")
-plt.axis("square")
-plt.xlabel("False Positive Rate")
-plt.ylabel("True Positive Rate")
-plt.title("One-vs-Rest ROC curves:\nPC vs the rest")
-plt.legend()
-plt.savefig(f"ROC_{training_index}.png")
-
-from sklearn.metrics import confusion_matrix
-
-y_true = np.argmax(y_true,axis=1)
-y_pred = np.argmax(y_pred,axis=1)
-#y_pred = torch.round(y_pred)
-#category = np.argmax(y_pred[:,:],axis=1)
-#y_pred[np.where(category==0)] = [1,0,0,0]
-#y_pred[np.where(category==1)] = [0,1,0,0]
-#y_pred[np.where(category==2)] = [0,0,1,0]
-#y_pred[np.where(category==3)] = [0,0,0,1]  
-
-print(confusion_matrix(y_true, y_pred))
-
-wandb.finish()
