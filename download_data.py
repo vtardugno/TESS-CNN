@@ -35,5 +35,8 @@ class TessMetaDataset(Dataset):
     def __getitem__(self, idx):
         return self.tic_ids[idx], self.fields[:,idx], self.labels[idx]
 
-        
+
+dataset = TessMetaDataset('./test.npz')
+train_loader = DataLoader(dataset, batch_size=32, shuffle=True)
+
 
