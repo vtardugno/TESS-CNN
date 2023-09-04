@@ -18,11 +18,11 @@ start_time = time.time()
 torch.autograd.set_detect_anomaly(True)
 np.random.seed(410)
 
-training_index = "1440chunks_21_everything"
+training_index = "1440chunks_21_everything_2"
 
 # PREP AND LOAD DATA
 
-def prep_data(all_x,all_y,split):
+def prep_data(all_x,all_y,split,tics):
   #all_x = torch.load(x)
   #all_y = torch.load(y)
 
@@ -33,78 +33,100 @@ def prep_data(all_x,all_y,split):
   data_y = all_y[:split,:]
   data_y_val = all_y[split:,:]
 
-  planets_x = data_x[np.where((data_y[:,0]==1))]
-  planets_y = data_y[np.where((data_y[:,0]==1))]
-  planets_x_val = data_x_val[np.where((data_y_val[:,0]==1))]
-  planets_y_val = data_y_val[np.where((data_y_val[:,0]==1))]
+  tics_train = tics[:split]
+  tics_val = tics[split:]
+
+  planet_mask = np.where((data_y[:,0]==1))
+  planet_mask_val = np.where((data_y_val[:,0]==1))
+  planets_x = data_x[planet_mask]
+  planets_y = data_y[planet_mask]
+  planets_x_val = data_x_val[planet_mask_val]
+  planets_y_val = data_y_val[planet_mask_val]
+  planets_tics = tics_train[planet_mask]
+  planets_tics_val = tics_val[planet_mask_val]
   
-  eb_x = data_x[np.where((data_y[:,1]==1))]
-  #eb_x = eb_x[::2,:,:]
-  eb_y = data_y[np.where((data_y[:,1]==1))]
-  #eb_y = eb_y[::2,:]
-  eb_x_val = data_x_val[np.where((data_y_val[:,1]==1))]
-  #eb_x_val = eb_x_val[::2,:,:]
-  eb_y_val = data_y_val[np.where((data_y_val[:,1]==1))]
-  #eb_y_val = eb_y_val[::2,:]
+  eb_mask = np.where((data_y[:,1]==1))
+  eb_mask_val = np.where((data_y_val[:,1]==1))
+  eb_x = data_x[eb_mask]
+  eb_y = data_y[eb_mask]
+  eb_x_val = data_x_val[eb_mask_val]
+  eb_y_val = data_y_val[eb_mask_val]
+  eb_tics = tics_train[eb_mask]
+  eb_tics_val = tics_val[eb_mask_val]
 
-  other_x = data_x[np.where((data_y[:,2]==1))]
- # other_x = other_x[::2,:,:]
-  other_y = data_y[np.where((data_y[:,2]==1))]
-  #other_y = other_y[::2,:]
-
-  other_x_val = data_x_val[np.where((data_y_val[:,2]==1))]
-  #other_x_val = other_x_val[::2,:,:]
-  other_y_val = data_y_val[np.where((data_y_val[:,2]==1))]
-  #other_y_val = other_y_val[::2,:]
+  other_mask = np.where((data_y[:,2]==1))
+  other_mask_val = np.where((data_y_val[:,2]==1))
+  other_x = data_x[other_mask]
+  other_y = data_y[other_mask]
+  other_x_val = data_x_val[other_mask_val]
+  other_y_val = data_y_val[other_mask_val]
+  other_tics = tics_train[other_mask]
+  other_tics_val = tics_val[other_mask_val]
 
   data_x = torch.cat((planets_x,planets_x,planets_x,planets_x,planets_x,planets_x,planets_x,planets_x,eb_x,other_x,other_x,other_x,other_x),0)#nothing_x),0)
   data_y = torch.cat((planets_y,planets_y,planets_y,planets_y,planets_y,planets_y,planets_y,planets_y,eb_y,other_y,other_y,other_y,other_y),0)#,nothing_y),0)
   data_x_val = torch.cat((planets_x_val,planets_x_val,planets_x_val,planets_x_val,planets_x_val,planets_x_val,planets_x_val,planets_x_val,eb_x_val,other_x_val,other_x_val,other_x_val,other_x_val),0)#,nothing_x_val),0)
   data_y_val = torch.cat((planets_y_val,planets_y_val,planets_y_val,planets_y_val,planets_y_val,planets_y_val,planets_y_val,planets_y_val,eb_y_val,other_y_val,other_y_val,other_y_val,other_y_val),0)#,nothing_y_val),0)
+  
+  tics_train = torch.cat((planets_tics,planets_tics,planets_tics,planets_tics,planets_tics,planets_tics,planets_tics,planets_tics,eb_tics,other_tics,other_tics,other_tics,other_tics),0)#,nothing_y),0)
+  tics_val = torch.cat((planets_tics_val,planets_tics_val,planets_tics_val,planets_tics_val,planets_tics_val,planets_tics_val,planets_tics_val,planets_tics_val,eb_tics_val,other_tics_val,other_tics_val,other_tics_val,other_tics_val),0)#,nothing_x_val),0)
+  
+
 
 
   mask = np.array(range(len(data_x)))
   mask_val = np.array(range(len(data_x_val)))
 
+  #np.random.shuffle(mask)
+  #np.random.shuffle(mask_val)
+
+
+  #data_x = data_x[mask]
+  #data_y = data_y[mask]
+  #data_x_val = data_x_val[mask_val]
+  #data_y_val = data_y_val[mask_val]
   
  
-  print("planets", planets_y.shape, planets_y_val.shape, "eb", eb_y.shape, eb_y_val.shape, "fp", other_y.shape, other_y_val.shape)#, "nothing", nothing_y.shape, nothing_y_val.shape)
+  print("planets", planets_y.shape, planets_y_val.shape, "eb", eb_y.shape, eb_y_val.shape, "fp", other_y.shape, other_y_val.shape, "tics", tics_train.shape, tics_val.shape)#, "nothing", nothing_y.shape, nothing_y_val.shape)
   
-  return data_x, data_x_val, data_y[:,:-1], data_y_val[:,:-1]
+  return data_x, data_x_val, data_y[:,:-1], data_y_val[:,:-1], tics_train, tics_val
   
-data1x = torch.load("data_x_chunks_1440_flux2.pt")#[:,[0,1,2,3,4,5,7],:]
-data2x = torch.load("data_x_chunks_1440_flux2_2.pt")#[:,[0,1,2,3,4,5,7],:]
-data3x = torch.load("data_x_chunks_1440_flux2_3.pt")#[:,[0,1,2,3,4,5,7],:]
-#data4x = torch.load("data_x_chunks_1440_4.pt")
-#data5x = torch.load("data_x_chunks_1440_5.pt")
-#data6x = torch.load("data_x_chunks_1440_6.pt")
+data1x = torch.load("data_x_chunks_1440_no_tics_filterbkg.pt")#[:,[0,1,2,3,7],:]
+data2x = torch.load("data_x_chunks_1440_no_tics_filterbkg_2.pt")#[:,[0,1,2,3,7],:]
+data3x = torch.load("data_x_chunks_1440_no_tics_filterbkg_3.pt")#[:,[0,1,2,3,7],:]
 
-data1y = torch.load("data_y_chunks_1440_flux2.pt")
-data2y = torch.load("data_y_chunks_1440_flux2_2.pt")
-data3y = torch.load("data_y_chunks_1440_flux2_3.pt")
-#data4y = torch.load("data_y_chunks_1440_4.pt")
-#data5y = torch.load("data_y_chunks_1440_5.pt")
-#data6y = torch.load("data_y_chunks_1440_6.pt")
+
+# data4x = torch.load("data_x_chunks_1440_no_tics.pt")
+# data5x = torch.load("data_x_chunks_1440_no_tics_2.pt")
+# data6x = torch.load("data_x_chunks_1440_no_tics_3.pt")
+
+data1y = torch.load("data_y_chunks_1440_no_tics_filterbkg.pt")
+data2y = torch.load("data_y_chunks_1440_no_tics_filterbkg_2.pt")
+data3y = torch.load("data_y_chunks_1440_no_tics_filterbkg_3.pt")
+
+id1 = torch.load("tic_ids_chunks_1440_no_tics_filterbkg.pt")
+id2 = torch.load("tic_ids_chunks_1440_no_tics_filterbkg_2.pt")
+id3 = torch.load("tic_ids_chunks_1440_no_tics_filterbkg_3.pt")
 
 
 datax = torch.cat((data1x,data2x,data3x),0)
 datay = torch.cat((data1y,data2y,data3y),0)
+ids = torch.cat((id1,id2,id3),0)
+
+#datax2 = torch.cat((data4x,data5x,data6x),0)
 
 
 mask = np.array(range(len(datax)))
 np.random.shuffle(mask)
 datax = datax[mask]
 datay = datay[mask]
+ids = ids[mask]
 
-#data_x, data_x_val, data_y, data_y_val = prep_data("data_x_chunks_720.pt","data_y_chunks_720.pt",180000)
+#datax2 = datax2[mask]
 
-#tshirt_pc_pre = np.where((data1y[:,0]==1))[0][:81]
-#sorter = np.argsort(mask)
-#tshirt_pc_post = sorter[np.searchsorted(mask, tshirt_pc_pre, sorter=sorter)]
-#print(data1x[tshirt_pc_pre]==datax[tshirt_pc_post])
+data_x, data_x_val, data_y, data_y_val, tics_train, tics_val = prep_data(datax, datay ,225000,ids)
 
-data_x, data_x_val, data_y, data_y_val = prep_data(datax, datay ,225000)
-
+#data_x_2 , _, _, _, _, _ = prep_data(datax2, datay ,225000,ids)
 
 mask = np.array(range(len(data_x)))
 mask_val = np.array(range(len(data_x_val)))
@@ -118,22 +140,25 @@ data_y = data_y[mask]
 data_x_val = data_x_val[mask_val]
 data_y_val = data_y_val[mask_val]
 
+tics_train = tics_train[mask]
+tics_val = tics_val[mask_val]
+
+#data_x_2 = data_x_2[mask]
 
 print(data_x.shape,data_x_val.shape)
 
-training_set = torch.utils.data.TensorDataset(data_x,data_y)
+training_set = torch.utils.data.TensorDataset(data_x,data_y, tics_train)
 training_generator = torch.utils.data.DataLoader(training_set, batch_size = 1024, shuffle=True)
 
-validation_set = torch.utils.data.TensorDataset(data_x_val,data_y_val)
+validation_set = torch.utils.data.TensorDataset(data_x_val,data_y_val,tics_val)
 validation_generator = torch.utils.data.DataLoader(validation_set,batch_size = 1024, shuffle=True)
 
-#torch.reshape(data_x,(data_x.shape[0],1,data_x.shape[1])) #only use this when you have 1 channel only
-#torch.reshape(data_x_val,(data_x_val.shape[0],1,data_x_val.shape[1]))
 print(data_x.shape,data_x_val.shape)
+
 
 # LOAD MODEL
 
-channels, n_out = 7,3
+channels, n_out = 6,3
 
 class Classifier(nn.Module):
   def __init__(self, channels, n_out):
@@ -214,41 +239,29 @@ net.load_state_dict(torch.load(f'training{training_index}/cp_{training_index}.ck
 
 # PERFORMANCE EVALUATION
 
-planets = 0
-eb = 0
-other = 0
-#nothing = 0 
-
 y_true = np.array([])
 y_pred = np.array([])
 x_batch = np.array([])
+tic_ids = np.array([])
 
 net.eval()
-for local_batch, local_labels in validation_generator:
+for local_batch, local_labels, tics in validation_generator:
   # Transfer to GPU
   #local_batch, local_labels = local_batch.cuda(), local_labels.cuda()
-  pred_y = net(local_batch[:,[0,1,2,3,4,5,7],:])
+  pred_y = net(local_batch)
   pred_y = pred_y.cpu().detach().numpy()
   true_y = local_labels.numpy()
   if y_true.shape[0] == 0:
     y_true = true_y
     y_pred = pred_y
-    x_batch = local_batch[:,[0,1,6],:]
+    x_batch = local_batch[:,[0,1],:]
+    tic_ids = tics.numpy()
   else:
     y_true = np.append(y_true, true_y, axis=0)
     y_pred = np.append(y_pred, pred_y, axis=0)
-    x_batch = np.append(x_batch, local_batch[:,[0,1,6],:], axis=0)
-  for i in pred_y:
-      if np.argmax(i) == 0:
-        planets = planets+1
-      if np.argmax(i) == 1:
-        eb = eb+1
-      if np.argmax(i) == 2:
-        other = other+1
+    x_batch = np.append(x_batch, local_batch[:,[0,1],:], axis=0)
+    tic_ids = np.append(tic_ids, tics, axis=0)
 
-
-
-print(planets,eb,other)#,nothing)
 
 
 print(confusion_matrix(np.argmax(y_true,axis=1), np.argmax(y_pred,axis=1)))
@@ -299,11 +312,11 @@ fp_as_eb_tics = []
 for i in range(len(y_true)):
     if np.argmax(y_true,axis=1)[i] == 2 and np.argmax(y_pred,axis=1)[i] == 0:
         fp_as_pc.append(i)
-        fp_as_pc_tics.append(x_batch[i,6,0])
+        fp_as_pc_tics.append(tic_ids[i])
         
     if np.argmax(y_true,axis=1)[i] == 2 and np.argmax(y_pred,axis=1)[i] == 1:
         fp_as_eb.append(i)
-        fp_as_eb_tics.append(x_batch[i,6,0])
+        fp_as_eb_tics.append(tic_ids[i])
 
     if np.argmax(y_true,axis=1)[i] == 2 and np.argmax(y_pred,axis=1)[i] == 2:
         fp_as_fp.append(i)
@@ -313,7 +326,6 @@ np.savetxt("fp_as_pc_tics.csv",np.array(fp_as_pc_tics),delimiter=",")
 np.savetxt("fp_as_eb_tics.csv",np.array(fp_as_eb_tics),delimiter=",")
 
 def make_plot(cols, rows, size, label,title):
-
     fig, axs = plt.subplots(cols,rows, figsize=size)
     fig.tight_layout(pad=-1.5)
     fig.suptitle(title, fontsize=20,y=0.99)
@@ -330,10 +342,10 @@ def make_plot(cols, rows, size, label,title):
             
             lc = np.random.choice(label,replace=False)
             
-            axs[row][col].plot(x_batch[lc,0,:],".",markersize=1,color="indigo",label=f"{x_batch[lc,-1,0]}")
+            axs[row][col].plot(x_batch[lc,0,:],".",markersize=1,color="indigo",label=f"{tic_ids[lc][0]:.0f}") #magic
             axs[row][col].tick_params(left=False,bottom=False,labelleft=False,labelbottom=False)
             axs[row][col].legend()
-            print(y_true[lc,2])
+            #print(y_true[lc,2])
             axs2[row][col].plot(x_batch[lc,1,:],".",markersize=0.6,color="tab:orange")
             axs2[row][col].tick_params(left=False,bottom=False,labelleft=False,labelbottom=False)
             
@@ -341,7 +353,8 @@ def make_plot(cols, rows, size, label,title):
             #axs[row][col].axis("off")
             
     fig.savefig(title+".png") 
-    fig2.savefig(title+"_bkg.png")    
+    fig2.savefig(title+"_bkg.png")  
+      
 
 make_plot(8,8,(15,18),fp_as_eb,"FP as EB")   
 make_plot(8,8,(15,18),fp_as_pc,"FP as PC")
@@ -351,3 +364,39 @@ end_time = time.time()
 elapsed_time = end_time - start_time
 
 print("Elapsed time: ", elapsed_time)
+
+fp_mask = np.where((data_y[:,2]==1))
+
+def make_plot2(cols, rows, size, label,title):
+    label = label[0]
+    print(len(label))
+    fig, axs = plt.subplots(cols,rows, figsize=size)
+    fig.tight_layout(pad=-1.5)
+    fig.suptitle(title + " (no filter)", fontsize=20,y=0.99)
+    plt.subplots_adjust(top=0.96,right=0.99)
+
+    fig2, axs2 = plt.subplots(cols,rows, figsize=size)
+    fig2.tight_layout(pad=-1.5)
+    fig2.suptitle(title + " - bkg (no filter)", fontsize=20,y=0.99) 
+    plt.subplots_adjust(top=0.96,right=0.99)
+
+    for row in range(rows):
+        
+        for col in range(cols):
+            
+            lc = np.random.choice(label,replace=False)
+            
+            axs[row][col].plot(data_x[lc,0,:],".",markersize=1,color="indigo",label=f"{tics_train[lc,0]:.0f}") #magic
+            axs[row][col].tick_params(left=False,bottom=False,labelleft=False,labelbottom=False)
+            #print(y_true[lc,2])
+            axs2[row][col].plot(data_x[lc,1,:],".",markersize=0.6,color="tab:orange")
+            axs2[row][col].tick_params(left=False,bottom=False,labelleft=False,labelbottom=False)
+            
+            label = np.delete(label,np.where(label==lc))
+            #axs[row][col].axis("off")
+            
+    fig.savefig(title+".png") 
+    fig2.savefig(title+"_bkg.png")  
+    
+
+make_plot2(9,9,(15,18),fp_mask,"fps")

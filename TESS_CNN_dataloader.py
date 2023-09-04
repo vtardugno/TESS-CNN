@@ -16,12 +16,12 @@ start_time = time.time()
 torch.autograd.set_detect_anomaly(True)
 np.random.seed(410)
 
-training_index = "1440chunks_21_everything_except_pos"
+training_index = "1440chunks_21_bkg_only"
 
 
 wandb.init(project="TESS_CNN_dataloader",name=training_index)
 
-def prep_data(all_x,all_y,split):
+def prep_data(all_x,all_y,split,tics):
   #all_x = torch.load(x)
   #all_y = torch.load(y)
 
@@ -32,51 +32,45 @@ def prep_data(all_x,all_y,split):
   data_y = all_y[:split,:]
   data_y_val = all_y[split:,:]
 
-  planets_x = data_x[np.where((data_y[:,0]==1))]
-  planets_y = data_y[np.where((data_y[:,0]==1))]
-  planets_x_val = data_x_val[np.where((data_y_val[:,0]==1))]
-  planets_y_val = data_y_val[np.where((data_y_val[:,0]==1))]
+  tics_train = tics[:split]
+  tics_val = tics[split:]
+
+  planet_mask = np.where((data_y[:,0]==1))
+  planet_mask_val = np.where((data_y_val[:,0]==1))
+  planets_x = data_x[planet_mask]
+  planets_y = data_y[planet_mask]
+  planets_x_val = data_x_val[planet_mask_val]
+  planets_y_val = data_y_val[planet_mask_val]
+  planets_tics = tics_train[planet_mask]
+  planets_tics_val = tics_val[planet_mask_val]
   
-  eb_x = data_x[np.where((data_y[:,1]==1))]
-  #eb_x = eb_x[::2,:,:]
-  eb_y = data_y[np.where((data_y[:,1]==1))]
-  #eb_y = eb_y[::2,:]
-  eb_x_val = data_x_val[np.where((data_y_val[:,1]==1))]
-  #eb_x_val = eb_x_val[::2,:,:]
-  eb_y_val = data_y_val[np.where((data_y_val[:,1]==1))]
-  #eb_y_val = eb_y_val[::2,:]
+  eb_mask = np.where((data_y[:,1]==1))
+  eb_mask_val = np.where((data_y_val[:,1]==1))
+  eb_x = data_x[eb_mask]
+  eb_y = data_y[eb_mask]
+  eb_x_val = data_x_val[eb_mask_val]
+  eb_y_val = data_y_val[eb_mask_val]
+  eb_tics = tics_train[eb_mask]
+  eb_tics_val = tics_val[eb_mask_val]
 
-  other_x = data_x[np.where((data_y[:,2]==1))]
- # other_x = other_x[::2,:,:]
-  other_y = data_y[np.where((data_y[:,2]==1))]
-  #other_y = other_y[::2,:]
-
-  other_x_val = data_x_val[np.where((data_y_val[:,2]==1))]
-  #other_x_val = other_x_val[::2,:,:]
-  other_y_val = data_y_val[np.where((data_y_val[:,2]==1))]
-  #other_y_val = other_y_val[::2,:]
-
-  #nothing_x = data_x[np.where((data_y[:,3]==1))]
-  #nothing_x = nothing_x[::3,:,:]
-  #nothing_y = data_y[np.where((data_y[:,3]==1))]
-  #nothing_y = nothing_y[::3,:]
-
-  #nothing_x_val = data_x_val[np.where((data_y_val[:,3]==1))]
-  #nothing_x_val = nothing_x_val[::3,:,:]
-  #nothing_y_val = data_y_val[np.where((data_y_val[:,3]==1))]
-  #nothing_y_val = nothing_y_val[::3,:]
-
- 
-
-#  data_x = torch.cat((data_x,planets_x,planets_x,planets_x),0)
-#  data_y = torch.cat((data_y,planets_y,planets_y,planets_y),0)
-#  data_x_val = torch.cat((data_x_val,planets_x_val,planets_x_val,planets_x_val),0)
-#  data_y_val = torch.cat((data_y_val,planets_y_val,planets_y_val,planets_y_val),0)
+  other_mask = np.where((data_y[:,2]==1))
+  other_mask_val = np.where((data_y_val[:,2]==1))
+  other_x = data_x[other_mask]
+  other_y = data_y[other_mask]
+  other_x_val = data_x_val[other_mask_val]
+  other_y_val = data_y_val[other_mask_val]
+  other_tics = tics_train[other_mask]
+  other_tics_val = tics_val[other_mask_val]
 
   data_x = torch.cat((planets_x,planets_x,planets_x,planets_x,planets_x,planets_x,planets_x,planets_x,eb_x,other_x,other_x,other_x,other_x),0)#nothing_x),0)
   data_y = torch.cat((planets_y,planets_y,planets_y,planets_y,planets_y,planets_y,planets_y,planets_y,eb_y,other_y,other_y,other_y,other_y),0)#,nothing_y),0)
   data_x_val = torch.cat((planets_x_val,planets_x_val,planets_x_val,planets_x_val,planets_x_val,planets_x_val,planets_x_val,planets_x_val,eb_x_val,other_x_val,other_x_val,other_x_val,other_x_val),0)#,nothing_x_val),0)
   data_y_val = torch.cat((planets_y_val,planets_y_val,planets_y_val,planets_y_val,planets_y_val,planets_y_val,planets_y_val,planets_y_val,eb_y_val,other_y_val,other_y_val,other_y_val,other_y_val),0)#,nothing_y_val),0)
+  
+  tics_train = torch.cat((planets_tics,planets_tics,planets_tics,planets_tics,planets_tics,planets_tics,planets_tics,planets_tics,eb_tics,other_tics,other_tics,other_tics,other_tics),0)#,nothing_y),0)
+  tics_val = torch.cat((planets_tics_val,planets_tics_val,planets_tics_val,planets_tics_val,planets_tics_val,planets_tics_val,planets_tics_val,planets_tics_val,eb_tics_val,other_tics_val,other_tics_val,other_tics_val,other_tics_val),0)#,nothing_x_val),0)
+  
+
 
 
   mask = np.array(range(len(data_x)))
@@ -92,42 +86,45 @@ def prep_data(all_x,all_y,split):
   #data_y_val = data_y_val[mask_val]
   
  
-  print("planets", planets_y.shape, planets_y_val.shape, "eb", eb_y.shape, eb_y_val.shape, "fp", other_y.shape, other_y_val.shape)#, "nothing", nothing_y.shape, nothing_y_val.shape)
+  print("planets", planets_y.shape, planets_y_val.shape, "eb", eb_y.shape, eb_y_val.shape, "fp", other_y.shape, other_y_val.shape, "tics", tics_train.shape, tics_val.shape)#, "nothing", nothing_y.shape, nothing_y_val.shape)
   
-  return data_x, data_x_val, data_y[:,:-1], data_y_val[:,:-1]
+  return data_x, data_x_val, data_y[:,:-1], data_y_val[:,:-1], tics_train, tics_val
   
-data1x = torch.load("data_x_chunks_1440_flux2.pt")[:,[0,1,2,3,7],:]
-data2x = torch.load("data_x_chunks_1440_flux2_2.pt")[:,[0,1,2,3,7],:]
-data3x = torch.load("data_x_chunks_1440_flux2_3.pt")[:,[0,1,2,3,7],:]
+data1x = torch.load("data_x_chunks_1440_no_tics_filterbkg.pt")[:,[1],:]
+data2x = torch.load("data_x_chunks_1440_no_tics_filterbkg_2.pt")[:,[1],:]
+data3x = torch.load("data_x_chunks_1440_no_tics_filterbkg_3.pt")[:,[1],:]
 #data4x = torch.load("data_x_chunks_1440_4.pt")
 #data5x = torch.load("data_x_chunks_1440_5.pt")
 #data6x = torch.load("data_x_chunks_1440_6.pt")
 
-data1y = torch.load("data_y_chunks_1440_flux2.pt")
-data2y = torch.load("data_y_chunks_1440_flux2_2.pt")
-data3y = torch.load("data_y_chunks_1440_flux2_3.pt")
+data1y = torch.load("data_y_chunks_1440_no_tics_filterbkg.pt")
+data2y = torch.load("data_y_chunks_1440_no_tics_filterbkg_2.pt")
+data3y = torch.load("data_y_chunks_1440_no_tics_filterbkg_3.pt")
 #data4y = torch.load("data_y_chunks_1440_4.pt")
 #data5y = torch.load("data_y_chunks_1440_5.pt")
 #data6y = torch.load("data_y_chunks_1440_6.pt")
 
+id1 = torch.load("tic_ids_chunks_1440_no_tics_filterbkg.pt")
+id2 = torch.load("tic_ids_chunks_1440_no_tics_filterbkg_2.pt")
+id3 = torch.load("tic_ids_chunks_1440_no_tics_filterbkg_3.pt")
+
 
 datax = torch.cat((data1x,data2x,data3x),0)
 datay = torch.cat((data1y,data2y,data3y),0)
+ids = torch.cat((id1,id2,id3),0)
 
+
+
+print(datax.shape,datay.shape,ids.shape)
 
 mask = np.array(range(len(datax)))
 np.random.shuffle(mask)
 datax = datax[mask]
 datay = datay[mask]
+ids = ids[mask]
 
-#data_x, data_x_val, data_y, data_y_val = prep_data("data_x_chunks_720.pt","data_y_chunks_720.pt",180000)
 
-#tshirt_pc_pre = np.where((data1y[:,0]==1))[0][:81]
-#sorter = np.argsort(mask)
-#tshirt_pc_post = sorter[np.searchsorted(mask, tshirt_pc_pre, sorter=sorter)]
-#print(data1x[tshirt_pc_pre]==datax[tshirt_pc_post])
-
-data_x, data_x_val, data_y, data_y_val = prep_data(datax, datay ,225000)
+data_x, data_x_val, data_y, data_y_val, tics_train, tics_val = prep_data(datax, datay ,225000,ids)
 
 
 mask = np.array(range(len(data_x)))
@@ -137,38 +134,29 @@ np.random.shuffle(mask)
 np.random.shuffle(mask_val)
 
 
+
 data_x = data_x[mask]
 data_y = data_y[mask]
 data_x_val = data_x_val[mask_val]
 data_y_val = data_y_val[mask_val]
 
+tics_train = tics_train[mask]
+tics_val = tics_val[mask_val]
 
-print(data_x.shape,data_x_val.shape)
+#print(data_x.shape,data_x_val.shape,data_y.shape,data_y_val.shape,tics_train.shape,tics_val.train)
 
-training_set = torch.utils.data.TensorDataset(data_x,data_y)
+training_set = torch.utils.data.TensorDataset(data_x,data_y, tics_train)
 training_generator = torch.utils.data.DataLoader(training_set, batch_size = 1024, shuffle=True)
 
-validation_set = torch.utils.data.TensorDataset(data_x_val,data_y_val)
+validation_set = torch.utils.data.TensorDataset(data_x_val,data_y_val,tics_val)
 validation_generator = torch.utils.data.DataLoader(validation_set,batch_size = 1024, shuffle=True)
 
-#torch.reshape(data_x,(data_x.shape[0],1,data_x.shape[1])) #only use this when you have 1 channel only
-#torch.reshape(data_x_val,(data_x_val.shape[0],1,data_x_val.shape[1]))
 print(data_x.shape,data_x_val.shape)
-
-
-#for i in np.array([14,67]):
-  #plt.figure()
-  #plt.plot(data_x.cpu()[i,0,:])
-  #plt.savefig(f"LC{i}")
-  #plt.figure()
-  #plt.plot(data_x.cpu()[i,1,:])
-  #plt.savefig(f"BKG{i}")
-
 
 # Build network
 
 
-channels, n_out = 5,3
+channels, n_out = 1,3
 
 class Classifier(nn.Module):
   def __init__(self, channels, n_out):
@@ -287,7 +275,7 @@ for epoch in range(epochs):
     acc_loop = []
     val_acc_loop  = []
 
-    for local_batch, local_labels in training_generator:
+    for local_batch, local_labels, _ in training_generator:
         # Transfer to GPU
         local_batch, local_labels = local_batch.cuda(), local_labels.cuda()
         net.train()
@@ -302,7 +290,7 @@ for epoch in range(epochs):
         loss.backward()
         optimizer.step()
          
-    for local_batch, local_labels in validation_generator:
+    for local_batch, local_labels, _ in validation_generator:
         # Transfer to GPU
         local_batch, local_labels = local_batch.cuda(), local_labels.cuda()
         net.eval()
@@ -371,7 +359,7 @@ other = 0
 #nothing = 0 
 
 
-for local_batch, local_labels in training_generator:
+for local_batch, local_labels, _ in training_generator:
   # Transfer to GPU
   local_batch, local_labels = local_batch.cuda(), local_labels.cuda()
   pred_y = net(local_batch)
