@@ -86,15 +86,15 @@ def download_tic(tic, sector):
 #sectors = [2,3,4,5,6,17,18,19,45,48]
 #sectors = [6,17,18,19,45,48]
 
-sectors = [10,11,34,35]
+sectors = [33]
 
 for sector in sectors:
     # list of TIC IDs + ground truth
-    ground_truth = pd.read_csv(f"ground_truth/ground_truth_{sector}.csv")
+    ground_truth = pd.read_csv(f"ground_truth/ground_truth/ground_truth_{sector}.csv")
 
     tic_ids = ground_truth["TIC_ID"]
 
-    trans_loc = pd.read_csv(f"transit_loc/transit_locs_sec_{sector}.csv")
+    trans_loc = pd.read_csv(f"transit_locs_sec_{sector}.csv")
     loc_id = []
 
     for i in trans_loc.TIC_ID:
