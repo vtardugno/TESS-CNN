@@ -13,3 +13,10 @@ TESS_CNN.py contains the first trial convolutional neural network.
 TESS_CNN_dataloader.py contains the final convolutional neural network.
 
 load_model.py loads the model trained by TESS_CNN_dataloader.py and assesses performance.
+
+Most up-to-date pipeline: 
+
+1) Download light curves with download_lc_with_trans_loc.py
+2) Create files with create_data_files_chunks.py
+3) Train network with TESS_CNN_dataloader.py (skip this step if you wish to use an existing training run)
+4) Load model using load_model.py
