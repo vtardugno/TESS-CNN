@@ -86,7 +86,7 @@ def download_tic(tic, sector):
 #sectors = [2,3,4,5,6,17,18,19,45,48]
 #sectors = [6,17,18,19,45,48]
 
-sectors = [33]
+sectors = [33,48,49]
 
 for sector in sectors:
     # list of TIC IDs + ground truth
