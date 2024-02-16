@@ -43,7 +43,8 @@ def download_tic(tic, sector):
             pos1 = pos1[mask]
             pos2 = pos2[mask]
             bkg  = bkg[mask]
-
+            print("test")
+            print(loc_id)
             if (tic in loc_id):
     
                 ind = loc_id.index(tic)
@@ -64,7 +65,9 @@ def download_tic(tic, sector):
                 else:
                     gt = [0,0,1]
 
+                print("before")
                 data = np.array([time,flux, mom1, mom2, pos1, pos2, bkg, gt,loc])
+                print(data)
 
                 np.save(f"light_curves_s{sector}/{tic}_lc", data)
                 

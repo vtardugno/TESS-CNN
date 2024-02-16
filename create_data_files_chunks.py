@@ -19,13 +19,14 @@ pos1s = []
 pos2s = []
 tics = []
 fluxes2 = []
+sector = []
 
-#sector = 18
 
-sectors = [33]
+#sectors = [18,32,33,48]
 #sectors = [2,3,5,6,17,19,45]# chunk size without index
 #sectors = [4,18,10,11,34] #chunk_size_2
 #sectors = [35,36,37,38,42] #chunk_size_3 
+sectors = [50,53,54]
 
 chunk_size = 1440
 stride = 800
@@ -39,7 +40,7 @@ for sec in sectors:
         #chunk_num = int(len(lc[1])/chunk_size)
         chunk_num = int(np.ceil((len(lc[1]) - chunk_size) / stride))
 
-        if len(lc[1])>=1440:
+        if len(lc[1])>=10000:
             tic = int(curve.split("/")[-1][:-7])
 
             median_filter = sp.signal.medfilt(lc[6], kernel_size=719)
@@ -76,7 +77,7 @@ for sec in sectors:
                 pos2 = pos2[start:start+chunk_size]
                 pos2 = list(pos2)
 
-               # label = [lc[7][0],lc[7][1],lc[7][2]]
+                #label = [lc[7][0],lc[7][1],lc[7][2]]
                 #flux2 = np.array(lc[1][start:start+chunk_size])
                 #flux2 = flux/np.std(flux2) 
                 #flux2 = list(flux2)
@@ -125,17 +126,19 @@ for sec in sectors:
                 pos1s.append(pos1)
                 pos2s.append(pos2)
                 tics.append(tic)
+                sector.append(sec)
                 #fluxes2.append(flux2)
 
 
 
 #print(data[534])
 
-def make_tensor(fluxes,bkgs, labels, mom1s,mom2s,pos1s,pos2s,tics):#,fluxes2):
+def make_tensor(fluxes,bkgs, labels, mom1s,mom2s,pos1s,pos2s,tics,sector):#,fluxes2):
   #train_images, val_images, train_labels, val_labels = model_selection.train_test_split(all_images,all_labels, random_state=410)
     data_x = torch.zeros((len(fluxes),6,len(fluxes[0])))
     data_y = torch.zeros((len(labels),4))
     tic_ids = torch.zeros((len(tics),1),dtype=torch.int64)
+    secs = torch.zeros((len(sector),1),dtype=torch.int64)
 
   #print(data_x.shape,data_y.shape)
 
@@ -160,24 +163,30 @@ def make_tensor(fluxes,bkgs, labels, mom1s,mom2s,pos1s,pos2s,tics):#,fluxes2):
     for i in range(tic_ids.shape[0]):
         tic_ids[i,0] = torch.tensor(tics[i])
     
+    for i in range(secs.shape[0]):
+        secs[i,0] = torch.tensor(sector[i])
+    
     #tic_ids = torch.tensor(tics,dtype=torch.int64) #kaze
 
-    return data_x, data_y, tic_ids
-    #return data_y, tic_ids
+    return data_x, data_y, tic_ids, secs
+    #return secs
    
    
-data_x, data_y, tic_ids = make_tensor(fluxes,bkgs,labels,mom1s,mom2s,pos1s,pos2s,tics)#),fluxes2) 
-#data_x = make_tensor(fluxes,bkgs,labels,mom1s,mom2s,pos1s,pos2s,tics)#),fluxes2) 
+#data_x, data_y, tic_ids, sector = make_tensor(fluxes,bkgs,labels,mom1s,mom2s,pos1s,pos2s,tics,sector)#),fluxes2) 
+test_tensor = make_tensor(fluxes,bkgs,labels,mom1s,mom2s,pos1s,pos2s,tics,sector)#),fluxes2) 
+
+#train_val_tensor = make_tensor(fluxes,bkgs,labels,mom1s,mom2s,pos1s,pos2s,tics,sector)#),fluxes2) 
 
 
 # Save pre-processed data
 
-data_x.to(torch.float32)
+#data_x.to(torch.float32)
   
 
-torch.save(data_x,f"data_x_chunks_{chunk_size}_no_tics_filterbkg.pt")  # Rename these tensors if you'd like
-torch.save(data_y,f"data_y_chunks_{chunk_size}_no_tics_filterbkg_2.pt")    
-torch.save(tic_ids,f"tic_ids_chunks_{chunk_size}_no_tics_filterbkg_2.pt")     
+# torch.save(data_x,f"data_x_final.pt")  # Rename these tensors if you'd like
+# torch.save(data_y,f"data_y_final.pt")    
+# torch.save(tic_ids,f"tic_ids_final.pt")
+torch.save(test_tensor,f"test_tensor_s50_s53_s54.pt")     
    
 #print(data_y.shape)
 #print(data_x.shape)
