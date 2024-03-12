@@ -26,7 +26,12 @@ sector = []
 #sectors = [2,3,5,6,17,19,45]# chunk size without index
 #sectors = [4,18,10,11,34] #chunk_size_2
 #sectors = [35,36,37,38,42] #chunk_size_3 
-sectors = [50,53,54]
+#sectors = [50,53,54]
+
+#sectors = [36,37,38,39,40,41,42] #val
+#sectors = [43,44,45,46,47,48] #test 1
+#sectors = [49,50,51,52,53,54] #test 2
+sectors = [55,56,57,58,59,60] #test 2
 
 chunk_size = 1440
 stride = 800
@@ -186,9 +191,12 @@ test_tensor = make_tensor(fluxes,bkgs,labels,mom1s,mom2s,pos1s,pos2s,tics,sector
 # torch.save(data_x,f"data_x_final.pt")  # Rename these tensors if you'd like
 # torch.save(data_y,f"data_y_final.pt")    
 # torch.save(tic_ids,f"tic_ids_final.pt")
-torch.save(test_tensor,f"test_tensor_s50_s53_s54.pt")     
+#torch.save(test_tensor,f"test_tensor_s50_s53_s54.pt")     
    
-#print(data_y.shape)
+torch.save(test_tensor,f"test_tensor_3.pt")     
+
+
+# print(data_y.shape)
 #print(data_x.shape)
 #print(tic_ids.shape)
 

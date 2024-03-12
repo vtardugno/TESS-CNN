@@ -17,7 +17,7 @@ start_time = time.time()
 torch.autograd.set_detect_anomaly(True)
 np.random.seed(410)
 
-training_index = "20"
+training_index = "19_sec_shuffle"
 
 os.makedirs(f"training{training_index}",exist_ok=True)
 checkpoint_path = f"training{training_index}/cp_{training_index}.ckpt"
@@ -47,11 +47,18 @@ configs = {"lr": learn_rate,
            "val_cut":val_cut,
            "loss_weights":"yes",
            "TOIs":"no",
-           "batch_norm": "no, layer norm"}
+           "batch_norm": "no, layer norm + dropout"}
 
 wandb.init(project="TESS_CNN_dataloader",name=f"{training_index}")
 wandb.config.update(configs)
 def prep_data(all_x,all_y,split,tics):
+
+  #trying shuffling sectors:
+  big_mask = np.array(range(len(all_x)))
+  np.random.shuffle(big_mask)
+  all_x = all_x[big_mask]
+  all_y = all_y[big_mask]
+  tics = tics[big_mask]
 
   data_x = all_x[:split,:,:]
   data_x_val = all_x[split:,:,:]
@@ -420,7 +427,7 @@ print("Elapsed time: ", elapsed_time)
 
 np.save(f"y_true_val_{training_index}.npy",y_true)
 np.save(f"y_pred_val_{training_index}.npy",y_pred)
-np.save(f"y_tic_val_{training_index}.npy",tic_ids)
+np.save(f"tic_val_{training_index}.npy",tic_ids)
 
 # df = pd.DataFrame({"y_true":y_true,"y_pred":y_pred,"tic_ids":tic_ids})
 
