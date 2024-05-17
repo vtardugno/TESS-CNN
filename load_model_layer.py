@@ -162,9 +162,28 @@ training_index = "19"
 #data_x_2 = data_x_2[mask]
 
 
-test_tensor = torch.load("test_tensor_s50_s53_s54.pt")
+#val_tensor = torch.load("val_tensor_all.pt")
+tensor_1 = torch.load("test_tensor_1.pt")
+tensor_2 = torch.load("test_tensor_2.pt")
+tensor_3 = torch.load("test_tensor_3.pt")
 
-validation_set = torch.utils.data.TensorDataset(test_tensor[0],test_tensor[1],test_tensor[2],test_tensor[3])
+
+
+datax = torch.cat((tensor_1[0],tensor_2[0],tensor_3[0]),0)#[207000:,:,:]
+datay = torch.cat((tensor_1[1],tensor_2[1],tensor_3[1]),0)#[207000:,:]
+ids = torch.cat((tensor_1[2], tensor_2[2],tensor_3[2]),0)#[207000:]
+secs = torch.cat((tensor_1[3], tensor_2[3],tensor_3[3]),0)#[207000:]
+
+
+
+#datax = val_tensor[0]#,tensor_2[0],tensor_3[0]),0)[207000:,:,:]
+#datay = val_tensor[1]#,tensor_2[1],tensor_3[1]),0)[207000:,:]
+#ids = val_tensor[2]#, tensor_2[2],tensor_3[2]),0)[207000:]
+#secs = val_tensor[3]#, tensor_2[3],tensor_3[3]),0)[207000:]
+
+
+#validation_set = torch.utils.data.TensorDataset(test_tensor[0],test_tensor[1],test_tensor[2],test_tensor[3])
+validation_set = torch.utils.data.TensorDataset(datax,datay,ids,secs)
 validation_generator = torch.utils.data.DataLoader(validation_set,batch_size = 1024, shuffle=True)
 
 
@@ -244,7 +263,7 @@ net.load_state_dict(torch.load(f'training{training_index}/best_{training_index}.
 
 y_true = np.array([])
 y_pred = np.array([])
-#x_batch = np.array([])
+x_batch = np.array([])
 tic_ids = np.array([])
 sectors = np.array([])
 
@@ -265,20 +284,25 @@ for local_batch, local_labels, tics, sect in validation_generator:
     y_true = true_y
     y_pred = pred_y
     # y_pred2 = pred_y2
-    #x_batch = local_batch[:,[0,1],:]
+    x_batch = local_batch[:,[0],:]
     tic_ids = tics.numpy()
     sectors = sect.numpy()
   else:
     y_true = np.append(y_true, true_y, axis=0)
     y_pred = np.append(y_pred, pred_y, axis=0)
     # y_pred2 = np.append(y_pred2, pred_y2, axis=0)
-    #x_batch = np.append(x_batch, local_batch[:,[0,1],:], axis=0)
+    x_batch = np.append(x_batch, local_batch[:,[0],:], axis=0)
     tic_ids = np.append(tic_ids, tics, axis=0)
     sectors = np.append(sectors, sect, axis=0)
 
 print(np.unique(sectors))
 
-np.save(f"y_true_test_s50_s53_s54_{training_index}.npy",y_true)
-np.save(f"y_pred_test_s50_s53_s54_{training_index}.npy",y_pred)
-np.save(f"y_tic_test_s50_s53_s54_{training_index}.npy",tic_ids)
-np.save(f"y_sec_test_s50_s53_s54_{training_index}.npy",sectors)
+# np.save(f"y_true_test_s50_s53_s54_{training_index}.npy",y_true)
+# np.save(f"y_pred_test_s50_s53_s54_{training_index}.npy",y_pred)
+# np.save(f"y_tic_test_s50_s53_s54_{training_index}.npy",tic_ids)
+# np.save(f"y_sec_test_s50_s53_s54_{training_index}.npy",sectors)
+#np.save(f"x_test_s50_s53_s54_{training_index}.npy",x_batch)
+np.save(f"y_true_test_final_{training_index}.npy",y_true)
+np.save(f"y_pred_test_final_{training_index}.npy",y_pred)
+np.save(f"tic_test_final_{training_index}.npy",tic_ids)
+np.save(f"secs_test_final_{training_index}.npy",sectors)
